@@ -130,6 +130,28 @@ void loop(){
   unsigned int waterValue = adc_read(WATER_SENSOR);
 }
 
+unsigned long currentMillis;
+const unsigned long updateInterval = 60000; // 1 minute in milliseconds
+
+void loop() {
+  currentMillis = millis();
+  
+  // Check if it's time to update display (once per minute)
+  if (currentMillis - lastUpdateTime >= updateInterval) {
+    if (currentState != DISABLED) {
+      update_LCD();
+    }
+    lastUpdateTime = currentMillis;
+  }
+  
+  // Regular checks that don't need to wait for interval
+  water_level_check();
+  
+  if (currentState != DISABLED && currentState != ERROR) {
+    check_temperature();
+  }
+}
+
 void state_trans(CoolerState newState){
     PORTE &= ~(1 << PE5); // This is for yellow which is pin 3 AKA disabled
     PORTG &= ~(1 << PG5); // This is for green which is pin 4 AKA IDLE
