@@ -6,25 +6,26 @@
 
 // Pin Definitions
 #define WATER_SENSOR 0
-#define START_STOP_BUTTON 2 // I think start/stop button should be same button 
-#define STOP 3
-#define RESET 4
+#define START_STOP_BUTTON 1 // I think start/stop button should be same button 
+#define RESET 2
 
-#define YELLOW 5 // DISABLE
-#define GREEN 6 // IDLE
-#define RED 7  // ERROR
-#define BLUE 8 // RUNNNG
+#define YELLOW 3 // DISABLE
+#define GREEN 4 // IDLE
+#define RED 5  // ERROR
+#define BLUE 6 // RUNNNG
 
-#define FAN 9
-#define MOTOR_1 10
-#define MOTOR_2 11
-#define MOTOR_3 12
-#define MOTOR_4 13
+// pins for LCD
+const int rs = 7, en = 8, d4 = 9, d5 = 10, d6 = 11, d7 = 12;
+
+#define FAN  13
+#define MOTOR_1 14
+#define MOTOR_2 15
+#define MOTOR_3 16
+#define MOTOR_4 17
 #define DHT_TYPE DHT11
 #define DHT_PIN A1
-DHT dht(DHT_PIN,DHT_TYPE);
 
-// UART REGISTER (CANT USE serial.print etc)
+// UART 
 #define RDA 0x80
 #define TBE 0x20
 
@@ -62,12 +63,40 @@ while(*ptr != '\0'){
   }
     U0putchar('\n');
 }
+// ADC
+volatile unsigned char* my_ADMUX = (unsigned char*) 0x7C;
+volatile unsigned char* my_ADCSRB = (unsigned char*) 0x7B;
+volatile unsigned char* my_ADCSRA = (unsigned char*) 0x7A;
+volatile unsigned int* my_ADC_DATA = (unsigned int*) 0x78;
+
+void adc_init(){
+    *my_ADCSRA |= 0x80;
+    *my_ADCSRA &= ~(0x40);
+    *my_ADCSRA &= ~(0x20);
+    *my_ADCSRA |= 0x07;
+
+    *my_ADCSRB &= ~(0x08);
+    *my_ADCSRB &= ~(0x07);
+
+    *my_ADMUX &= ~(0x80);
+    *my_ADMUX |= 0x40;
+    *my_ADMUX &= ~(0x20);
+    *my_ADMUX &= ~(0x1F);
+}
+
+unsigned int adc_read(unsigned char adc_channel_num){
+    *my_ADMUX &= ~(0x1F);
+    *my_ADCSRB &= ~(0x08);
+    *my_ADCSRA |= 0x40;
+    while((*my_ADCSRA & 0x40) != 0);
+    return *my_ADC_DATA;
+}
 
 // Function Prototypes
 void start_button();
 void stop_button();
 void reset_button();
-void update_LCD(float temp, float humidity); // Needs to be written
+void update_LCD(); // Needs to be written
 void water_level_check(); // Needs to be written
 void state_trans(CoolerState newState);
 void store_event(const char* event); // Needs to be written
@@ -78,20 +107,23 @@ enum CoolerState { DISABLED, IDLE, ERROR, RUNNING };
 CoolerState currentState = DISABLED;
 
 // Global Objects
-LiquidCrystal lcd(7, 8, 9, 10, 11, 12);
-DHT dht(DHT_PIN, DHT_TYPE);
+LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
 RTC_DS1307 rtc;
 Stepper stepperMotor(STEPS_PER_REV, MOTOR_1, MOTOR_2, MOTOR_3, MOTOR_4);
+DHT dht(DHT_PIN, DHT_TYPE);
 
 bool systemEnabled = false;
 unsigned long lastUpdateTime = 0;
 
 void setup(){
   U0init(9600);
+    rtc.begin();
+    lcd.begin(16,2);
+    dht.bgein();
 }
 
 void loop(){
-  
+  unsigned int waterValue = adc_read(WATER_SENSOR);
 }
 
 void state_trans(CoolerState newState){
@@ -156,17 +188,16 @@ void reset_button(){
     }
 }
 
-void update_LCD(float temp, float humidity){
+void update_LCD(){
   lcd.clear();
   lcd.setCursor(0,0);
   lcd.print(" Temp(°C): ");
-  lcd.print(temp);
+  lcd.print(dht.readTemperature());
   lcd.print(" Humidity(%): ");
-  lcd.print(humidity);
+  lcd.print(dht.readHumidity());
 
   lcd.setCursor(0,1);
   lcd.print("State: ");
-    //lcd.print(currentState) // Could use this directly instead of switch statement, not sure how the code will react with this tho
   switch(currentState){
     case DISABLED: 
       lcd.print("DISABLED");
@@ -183,6 +214,6 @@ void update_LCD(float temp, float humidity){
   }
 }
 
-voide store_event(const char* event){
+void store_event(const char* event){
   UART_print(event);
 }
