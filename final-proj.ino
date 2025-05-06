@@ -5,8 +5,8 @@
 #include <Stepper.h>
 
 // Pin Definitions
-#define WATER_SENSOR A0
-#define START 2 // I think start/stop button should be same button 
+#define WATER_SENSOR 0
+#define START_STOP_BUTTON 2 // I think start/stop button should be same button 
 #define STOP 3
 #define RESET 4
 
@@ -67,6 +67,7 @@ void update_LCD(float temp, float humidity); // Needs to be written
 void water_level_check(); // Needs to be written
 void state_trans(CoolerState newState);
 void store_event(const char* event); // Needs to be written
+uint16_t get_water_level();
 
 // State Definitions
 enum CoolerState { DISABLED, IDLE, ERROR, RUNNING };
@@ -90,40 +91,41 @@ void loop(){
 }
 
 void state_trans(CoolerState newState){
-    DateTime now = rtc.now(); // Stack overflow help
-    Serial.print("Transition to ");    //CANNOT use serial.print function
-    Serial.print(newState);
-    Serial.print(" at ");
-    Serial.println(now.timestamp());
+    PORTE &= ~(1 << PE3); // This is for yellow which is pin 5 AKA disabled
+    PORTH &= ~(1 << PH3); // This is for green which is pin 6 AKA IDLE
+    PORTH &= ~(1 << PH4); // THis is for RED which is pin 7 AKA ERROR
+    PORTH &= ~(1 << PH5); // This  is for Blue which is pin 8 AKA RUNNING
 
-    digitalWrite(YELLOW, LOW);    // CANNOT USE digitalWrite function
-    digitalWrite(GREEN, LOW);
-    digitalWrite(RED, LOW);
-    digitalWrite(BLUE, LOW);
-
-    switch (newState){
+    switch(newState){
         case DISABLED:
-            digitalWrite(YELLOW, HIGH);
-            digitalWrite(FAN, LOW);
+            PORTE |= ~(1 << PE3);
+            PORTH &= ~(1 << PH6);
             break;
         
         case IDLE:
-            digitalWrite(GREEN, HIGH);
+            PORTH |= ~(1 << PH3);
             break;
       
         case ERROR:
-            digitalWrite(RED, HIGH);
-            digitalWrite(FAN, LOW);
+            PORTH |= (1<< PH4);
+            PORTH &= ~(1<< PH6);
             lcd.clear();
             lcd.print("Error: Low Water");
             break;
       
         case RUNNING:
-            digitalWrite(BLUE, HIGH);
-            digitalWrite(FAN, HIGH);
+            PORTH |= (1 << PH5);
+            PORTH &= ~(1 << PH6);
             break;
     }
     currentState = newState;
+}
+
+uint16_t get_water_level(){
+    ADMUX = (ADMUX & 0xF0) | WATER_SENSOR;
+    ADCSRA |= (1 << ADSC);
+    while(1 << ADSC) & ADCSRA);
+    return ADC;
 }
 
 void start_button(){
@@ -141,11 +143,11 @@ void stop_button(){
 }
 
 void reset_button(){
-    if (currentState == ERROR){
-        int waterLevel = analogRead(WATER_SENSOR);    // CANNOT use analogRead function 
+    if(currentState == ERROR){
+        uint16_t waterLevel = get_water_level();
         if (waterLevel > WATER_LEVEL_THRESHOLD){
             state_trans(IDLE);
-          store_event("System Reset");
+            store_event("System Reset");
         }
     }
 }
