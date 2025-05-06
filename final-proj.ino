@@ -20,7 +20,9 @@
 #define MOTOR_2 11
 #define MOTOR_3 12
 #define MOTOR_4 13
+#define DHT_TYPE DHT11
 #define DHT_PIN A1
+DHT dht(DHT_PIN,DHT_TYPE);
 
 // UART REGISTER (CANT USE serial.print etc)
 #define RDA 0x80
@@ -48,15 +50,17 @@ void U0putchar(unsigned char U0data){
 
 void UART_print(const char* msg){
   DateTime now = rtc.now();
-  U0putchar(now.timestamp());
+    char time[20];
+    sprintf(time, "%02d-%02d-%04d %02d:%02s:%02s ", now.month(), now.day(), now.year(), now.hour(), now.minute(), now.second());
+
+const char* ptr = time;
+while(*ptr != '\0'){
+    U0putchar(*ptr++);
+}
   while(*msg != '\0'){
     U0putchar(*msg++);
   }
-}
-
-void UART_println(const char* msg){
-  UART_print(msg);
-  U0putchar('\n');
+    U0putchar('\n');
 }
 
 // Function Prototypes
@@ -124,7 +128,7 @@ void state_trans(CoolerState newState){
 uint16_t get_water_level(){
     ADMUX = (ADMUX & 0xF0) | WATER_SENSOR;
     ADCSRA |= (1 << ADSC);
-    while(1 << ADSC) & ADCSRA);
+    while((1 << ADSC) & ADCSRA);
     return ADC;
 }
 
@@ -180,5 +184,5 @@ void update_LCD(float temp, float humidity){
 }
 
 voide store_event(const char* event){
-  UART_println(event);
+  UART_print(event);
 }
