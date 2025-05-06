@@ -147,10 +147,6 @@ void setup(){
     dht.begin();
 }
 
-void loop(){
-
-}
-
 unsigned long currentMillis;
 const unsigned long updateInterval = 60000; // 1 minute in milliseconds
 
