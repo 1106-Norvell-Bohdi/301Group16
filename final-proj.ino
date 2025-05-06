@@ -60,8 +60,8 @@ void check_system_timers();
 //Pin for Button Interupt And set up 
 #define PinInterupt 21
 //prot d
-volatile unsigned char* DDRD = (unsigned char*)0x0A;
-volatile unsigned char* PinD = (unsigned char*)0x09;
+volatile unsigned char* my_DDRD = (unsigned char*)0x0A;
+volatile unsigned char* my_PinD = (unsigned char*)0x09;
 volatile bool idle;
 void startStop(){
     idle = ~idle;
@@ -136,8 +136,8 @@ void setup(){
     DDRG |= (1 << DDG5);
     DDRH |= (1 << DDH5);
    //sets pin 21 (port d 0) to input
-    DDRD &= 0xFE; 
-    PinD &= 0xFE;
+    *my_DDRD &= 0xFE; 
+    *my_PinD &= 0xFE;
     //set up intrrupt function
     attatchInterrupt(digitalPinToInterrupt(PinInterupt), startStop, CHANGE));
 
