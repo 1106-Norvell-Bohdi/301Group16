@@ -29,6 +29,18 @@ const int rs = 7, en = 8, d4 = 9, d5 = 10, d6 = 11, d7 = 12;
 #define RDA 0x80
 #define TBE 0x20
 
+//Pin for Button Interupt And set up 
+#define PinInterupt 21
+//prot d 
+volatile unsigned char* DDRD = (unsigned char*)0x0A;
+volatile unsigned char* PinD = (unsigned char*)0x09;
+volatile bool idle;
+void startStop(){
+    idle = ~idle;
+}
+
+
+
 volatile unsigned char* myUCSR0A = (unsigned char*)0x00C0;
 volatile unsigned char* myUCSR0B = (unsigned char*)0x00C1;
 volatile unsigned char* myUCSR0C = (unsigned char*)0x00C2;
@@ -120,6 +132,11 @@ void setup(){
     DDRE |= (1 << DDE3);
     DDRG |= (1 << DDG5);
     DDRH |= (1 << DDH5);
+   //sets pin 21 (port d 0) to input
+    DDRD &= 0xFE; 
+    PinD &= 0xFE;
+    //set up intrrupt function
+    attatchInterrupt(digitalPinToInterrupt(PinInterupt), startStop, CHANGE));
 
     U0init(9600);
     rtc.begin();
@@ -128,7 +145,12 @@ void setup(){
 }
 
 void loop(){
-  unsigned int waterValue = adc_read(WATER_SENSOR);
+  if(idle){
+
+  }
+  else{
+    unsigned int waterValue = adc_read(WATER_SENSOR);
+  }
 }
 
 void state_trans(CoolerState newState){
