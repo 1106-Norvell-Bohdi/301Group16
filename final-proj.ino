@@ -4,6 +4,7 @@
 #include <RTClib.h>
 #include <Stepper.h>
 
+
 // Pin Definitions
 #define WATER_LEVEL_THRESHOLD 200
 #define WATER_SENSOR A0 //PF0
@@ -17,15 +18,40 @@
 #define RED 5  // ERROR
 #define BLUE 6 // RUNNNG
 
-// pins for LCD
-const int rs = 7, en = 8, d4 = 9, d5 = 10, d6 = 11, d7 = 12;
-
-#define DHT11_PIN 13
+#define DHT_PIN 13
+#define DHT_TYPE 11
 #define MOTOR_1 14
 #define MOTOR_2 15
 #define MOTOR_3 16
 #define MOTOR_4 17
 #define FAN_PIN 30
+
+// State Definitions
+enum CoolerState { DISABLED, IDLE, ERROR, RUNNING };
+CoolerState currentState = DISABLED;
+
+// pins for LCD
+const int rs = 7, en = 8, d4 = 9, d5 = 10, d6 = 11, d7 = 12;
+// Global Objects
+LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
+RTC_DS1307 rtc;
+//Stepper stepperMotor(STEPS_PER_REV, MOTOR_1, MOTOR_2, MOTOR_3, MOTOR_4);
+DHT dht(DHT_PIN, DHT_TYPE);
+
+bool systemEnabled = false;
+unsigned long lastUpdateTime = 0;
+
+// Function Prototypes
+void start_stop_button();
+void reset_button();
+void update_LCD(); 
+void water_level_check(); 
+void state_trans(CoolerState newState);
+void store_event(const char* event); 
+uint16_t get_water_level();
+void control_fan();
+void control_stepper();
+void check_system_timers();
 
 // UART 
 #define RDA 0x80
@@ -33,15 +59,13 @@ const int rs = 7, en = 8, d4 = 9, d5 = 10, d6 = 11, d7 = 12;
 
 //Pin for Button Interupt And set up 
 #define PinInterupt 21
-//prot d 
+//prot d
 volatile unsigned char* DDRD = (unsigned char*)0x0A;
 volatile unsigned char* PinD = (unsigned char*)0x09;
 volatile bool idle;
 void startStop(){
     idle = ~idle;
 }
-
-
 
 volatile unsigned char* myUCSR0A = (unsigned char*)0x00C0;
 volatile unsigned char* myUCSR0B = (unsigned char*)0x00C1;
@@ -105,32 +129,6 @@ unsigned int adc_read(unsigned char adc_channel_num){
     while((*my_ADCSRA & 0x40) != 0);
     return *my_ADC_DATA;
 }
-
-// Function Prototypes
-void start_stop_button();
-void reset_button();
-void update_LCD(); 
-void water_level_check(); 
-void state_trans(CoolerState newState);
-void store_event(const char* event); 
-uint16_t get_water_level();
-void control_fan();
-void control_stepper();
-void check_system_timers();
-
-
-// State Definitions
-enum CoolerState { DISABLED, IDLE, ERROR, RUNNING };
-CoolerState currentState = DISABLED;
-
-// Global Objects
-LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
-RTC_DS1307 rtc;
-Stepper stepperMotor(STEPS_PER_REV, MOTOR_1, MOTOR_2, MOTOR_3, MOTOR_4);
-DHT dht(DHT_PIN, DHT_TYPE);
-
-bool systemEnabled = false;
-unsigned long lastUpdateTime = 0;
 
 void setup(){
     DDRE |= (1 << DDE5);
@@ -214,7 +212,7 @@ void update_LCD() {
 
     // Line 1: Temp and Humidity
     lcd.setCursor(0, 0);
-    if (dht.readtemp() || dht.readhumidity()) {
+    if (dht.readTemperature() || dht.readHumidity()) {
         lcd.print("Sensor error");
     } else {
         lcd.print("T:");
@@ -346,5 +344,4 @@ void check_system_timers() {
         lastUpdateTime = millis();
     }
 }
-
 
