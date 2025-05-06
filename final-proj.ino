@@ -7,24 +7,25 @@
 
 // Pin Definitions
 #define WATER_LEVEL_THRESHOLD 200
-#define WATER_SENSOR A0 //PF0
 #define TEMP_HIGH_THRESHOLD 30 
 #define TEMP_LOW_THRESHOLD 24
-#define START_STOP_BUTTON 1 // I think start/stop button should be same button 
-#define RESET 2
 
-#define YELLOW 3 // DISABLE
-#define GREEN 4 // IDLE
-#define RED 5  // ERROR
-#define BLUE 6 // RUNNNG
+#define WATER_SENSOR A0 //PF0
+#define START_STOP_BUTTON 1 // PE1
+#define RESET 2    //PE4
 
-#define DHT_PIN 13
-#define DHT_TYPE 11
-#define MOTOR_1 14
-#define MOTOR_2 15
-#define MOTOR_3 16
-#define MOTOR_4 17
-#define FAN_PIN 30
+#define YELLOW 3 // PE5 - DISABLE
+#define GREEN 4 // PG5 - IDLE
+#define RED 5  // PE3 - ERROR
+#define BLUE 6 // PH3 - RUNNNG
+
+#define DHT_PIN 13    // PB7 
+#define DHT_TYPE 11    //DHT type 11
+#define MOTOR_1 14    // PJ1
+#define MOTOR_2 15    // PJ0
+#define MOTOR_3 16    // Ph1
+#define MOTOR_4 17    // PH0
+#define FAN_PIN 30     // PC7
 
 // State Definitions
 enum CoolerState { DISABLED, IDLE, ERROR, RUNNING };
