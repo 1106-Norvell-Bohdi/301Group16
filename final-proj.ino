@@ -91,12 +91,12 @@ void loop(){
 
 void state_trans(CoolerState newState){
     DateTime now = rtc.now(); // Stack overflow help
-    Serial.print("Transition to ");
+    Serial.print("Transition to ");    //CANNOT use serial.print function
     Serial.print(newState);
     Serial.print(" at ");
     Serial.println(now.timestamp());
 
-    digitalWrite(YELLOW, LOW);
+    digitalWrite(YELLOW, LOW);    // CANNOT USE digitalWrite function
     digitalWrite(GREEN, LOW);
     digitalWrite(RED, LOW);
     digitalWrite(BLUE, LOW);
@@ -142,7 +142,7 @@ void stop_button(){
 
 void reset_button(){
     if (currentState == ERROR){
-        int waterLevel = analogRead(WATER_SENSOR);
+        int waterLevel = analogRead(WATER_SENSOR);    // CANNOT use analogRead function 
         if (waterLevel > WATER_LEVEL_THRESHOLD){
             state_trans(IDLE);
           store_event("System Reset");
@@ -160,6 +160,7 @@ void update_LCD(float temp, float humidity){
 
   lcd.setCursor(0,1);
   lcd.print("State: ");
+    //lcd.print(currentState) // Could use this directly instead of switch statement, not sure how the code will react with this tho
   switch(currentState){
     case DISABLED: 
       lcd.print("DISABLED");
