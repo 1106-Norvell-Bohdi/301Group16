@@ -142,11 +142,13 @@ void state_trans(CoolerState newState){
             // PORTE |= ~(1 << PE5);
             // PORTH &= ~(1 << PH6);
             PORTG |= (1 << PG5);
+            store_event("System DISABLED")
             break;
         
         case IDLE:
             // PORTH |= ~(1 << PH5);
             PORTE |= (1 << PE3);
+            store_event("System IDLE");
             break;
       
         case ERROR:
@@ -154,13 +156,15 @@ void state_trans(CoolerState newState){
             // PORTH &= ~(1<< PH6);
             PORTE |= (1 << PE5);
             lcd.clear();
-            lcd.print("Error: Low Water");
+            lcd.print("System Error: Low Water");
+            store_event("System ERROR");
             break;
       
         case RUNNING:
             // PORTH |= (1 << PH5);
             // PORTH &= ~(1 << PH6);
             PORTH |= (1 << PH3);
+            store_event("System RUNNING");
             break;
     }
     currentState = newState;
@@ -198,11 +202,12 @@ void reset_button(){
 }
 
 void update_LCD(){
+    //implement delay for updates every minute
   lcd.clear();
   lcd.setCursor(0,0);
   lcd.print(" Temp(°C): ");
   lcd.print(dht.readTemperature());
-  lcd.print(" Humidity(%): ");
+  lcd.print("   Humidity(%): ");
   lcd.print(dht.readHumidity());
 
   lcd.setCursor(0,1);
