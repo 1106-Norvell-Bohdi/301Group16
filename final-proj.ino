@@ -5,7 +5,8 @@
 #include <Stepper.h>
 
 // Pin Definitions
-#define WATER_SENSOR 0
+#define WATER_LEVEL_THRESHOLD 200
+#define WATER_SENSOR A0 //PF0
 #define START_STOP_BUTTON 1 // I think start/stop button should be same button 
 #define RESET 2
 
@@ -17,13 +18,12 @@
 // pins for LCD
 const int rs = 7, en = 8, d4 = 9, d5 = 10, d6 = 11, d7 = 12;
 
-#define FAN  13
+#define DHT11_PIN 13
 #define MOTOR_1 14
 #define MOTOR_2 15
 #define MOTOR_3 16
 #define MOTOR_4 17
-#define DHT_TYPE DHT11
-#define DHT_PIN A1
+#define FAN  
 
 // UART 
 #define RDA 0x80
@@ -93,8 +93,7 @@ unsigned int adc_read(unsigned char adc_channel_num){
 }
 
 // Function Prototypes
-void start_button();
-void stop_button();
+void start_stop_button();
 void reset_button();
 void update_LCD(); // Needs to be written
 void water_level_check(); // Needs to be written
@@ -176,15 +175,24 @@ uint16_t get_water_level(){
     while((1 << ADSC) & ADCSRA);
     return ADC;
 }
+void water_check_level(){
+    uint16_t waterLevel = get_water_level();
+    if (waterLevel < WATER_LEVEL_THRESHOLD) {
+    if (currentState != DISABLED && currentState != ERROR) {
+      state_trans(ERROR);
+    }
+  } else if (currentState == ERROR) {
+    // Water level is now good, but need reset button to return to IDLE
+  }
+}
 
+
+// ISR FOR BUTTONS START/STOP & REST
 void start_stop_button(){
     if (currentState == DISABLED){
         state_trans(IDLE);
         store_event("Start System");
     }
-}
-
-void stop_button(){
     if (currentState != DISABLED){
         state_trans(DISABLED);
         store_event("Stopped System");
