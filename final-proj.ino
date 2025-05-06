@@ -1,3 +1,7 @@
+// CPE 301 - Group 16 Final Swamp Cooler
+// Keegan Evans, Bohdi Norvell, Aiden Coss, Connor James
+
+
 #include <LiquidCrystal.h>
 #include <DHT.h>
 #include <Wire.h>
