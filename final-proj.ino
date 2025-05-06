@@ -116,10 +116,15 @@ bool systemEnabled = false;
 unsigned long lastUpdateTime = 0;
 
 void setup(){
-  U0init(9600);
+    DDRE |= (1 << DDE5);
+    DDRE |= (1 << DDE3);
+    DDRG |= (1 << DDG5);
+    DDRH |= (1 << DDH5);
+
+    U0init(9600);
     rtc.begin();
     lcd.begin(16,2);
-    dht.bgein();
+    dht.begin();
 }
 
 void loop(){
@@ -127,31 +132,35 @@ void loop(){
 }
 
 void state_trans(CoolerState newState){
-    PORTE &= ~(1 << PE3); // This is for yellow which is pin 5 AKA disabled
-    PORTH &= ~(1 << PH3); // This is for green which is pin 6 AKA IDLE
-    PORTH &= ~(1 << PH4); // THis is for RED which is pin 7 AKA ERROR
-    PORTH &= ~(1 << PH5); // This  is for Blue which is pin 8 AKA RUNNING
+    PORTE &= ~(1 << PE5); // This is for yellow which is pin 3 AKA disabled
+    PORTG &= ~(1 << PG5); // This is for green which is pin 4 AKA IDLE
+    PORTE &= ~(1 << PE3); // THis is for RED which is pin 5 AKA ERROR
+    PORTH &= ~(1 << PH3); // This  is for Blue which is pin 6 AKA RUNNING
 
     switch(newState){
         case DISABLED:
-            PORTE |= ~(1 << PE3);
-            PORTH &= ~(1 << PH6);
+            // PORTE |= ~(1 << PE5);
+            // PORTH &= ~(1 << PH6);
+            PORTG |= (1 << PG5);
             break;
         
         case IDLE:
-            PORTH |= ~(1 << PH3);
+            // PORTH |= ~(1 << PH5);
+            PORTE |= (1 << PE3);
             break;
       
         case ERROR:
-            PORTH |= (1<< PH4);
-            PORTH &= ~(1<< PH6);
+            // PORTH |= (1<< PH4);
+            // PORTH &= ~(1<< PH6);
+            PORTE |= (1 << PE5);
             lcd.clear();
             lcd.print("Error: Low Water");
             break;
       
         case RUNNING:
-            PORTH |= (1 << PH5);
-            PORTH &= ~(1 << PH6);
+            // PORTH |= (1 << PH5);
+            // PORTH &= ~(1 << PH6);
+            PORTH |= (1 << PH3);
             break;
     }
     currentState = newState;
@@ -164,7 +173,7 @@ uint16_t get_water_level(){
     return ADC;
 }
 
-void start_button(){
+void start_stop_button(){
     if (currentState == DISABLED){
         state_trans(IDLE);
         store_event("Start System");
