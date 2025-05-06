@@ -95,10 +95,10 @@ unsigned int adc_read(unsigned char adc_channel_num){
 // Function Prototypes
 void start_stop_button();
 void reset_button();
-void update_LCD(); // Needs to be written
-void water_level_check(); // Needs to be written
+void update_LCD(); 
+void water_level_check(); 
 void state_trans(CoolerState newState);
-void store_event(const char* event); // Needs to be written
+void store_event(const char* event); 
 uint16_t get_water_level();
 
 // State Definitions
@@ -127,7 +127,7 @@ void setup(){
 }
 
 void loop(){
-  unsigned int waterValue = adc_read(WATER_SENSOR);
+
 }
 
 unsigned long currentMillis;
@@ -135,7 +135,7 @@ const unsigned long updateInterval = 60000; // 1 minute in milliseconds
 
 void loop() {
   currentMillis = millis();
-  
+    unsigned int waterValue = adc_read(WATER_SENSOR);
   // Check if it's time to update display (once per minute)
   if (currentMillis - lastUpdateTime >= updateInterval) {
     if (currentState != DISABLED) {
@@ -149,6 +149,81 @@ void loop() {
   
   if (currentState != DISABLED && currentState != ERROR) {
     check_temperature();
+  }
+}
+
+// ISR FOR BUTTONS START/STOP & REST
+void start_stop_button(){
+    if (currentState == DISABLED){
+        state_trans(IDLE);
+        store_event("Start System");
+    }
+    if (currentState != DISABLED){
+        state_trans(DISABLED);
+        store_event("Stopped System");
+    }
+}
+
+void reset_button(){
+    if(currentState == ERROR){
+        uint16_t waterLevel = get_water_level();
+        if (waterLevel > WATER_LEVEL_THRESHOLD){
+            state_trans(IDLE);
+            store_event("System Reset");
+        }
+    }
+}
+
+void update_LCD() {
+    lcd.clear();
+
+    // Read sensor values
+    float temp = dht.readTemperature();
+    float humidity = dht.readHumidity();
+    uint16_t waterLevel = adc_read(WATER_SENSOR);
+    DateTime now = rtc.now();
+
+    // Line 1: Temp and Humidity
+    lcd.setCursor(0, 0);
+    if (dht.readtemp() || dht.readhumidity()) {
+        lcd.print("Sensor error");
+    } else {
+        lcd.print("T:");
+        lcd.print(temp, 1);
+        lcd.print("C H:");
+        lcd.print(humidity, 0);
+        lcd.print("%");
+    }
+
+    // Line 2: State, Water Level, Time (HH:MM)
+    lcd.setCursor(0, 1);
+    lcd.print("S:");
+    switch(currentState){
+        case DISABLED: lcd.print("DIS "); break;
+        case IDLE:     lcd.print("IDL "); break;
+        case RUNNING:  lcd.print("RUN "); break;
+        case ERROR:    lcd.print("ERR "); break;
+    }
+
+    lcd.print("W:");
+    lcd.print(waterLevel);
+
+    lcd.print(" ");
+    if (now.hour() < 10) lcd.print("0");
+    lcd.print(now.hour());
+    lcd.print(":");
+    if (now.minute() < 10) lcd.print("0");
+    lcd.print(now.minute());
+}
+
+void water_check_level(){
+    uint16_t waterLevel = get_water_level();
+    if (waterLevel < WATER_LEVEL_THRESHOLD) {
+    if (currentState != DISABLED && currentState != ERROR) {
+      state_trans(ERROR);
+    }
+  } else if (currentState == ERROR) {
+    // Water level is now good, but need reset button to return to IDLE
   }
 }
 
@@ -191,73 +266,22 @@ void state_trans(CoolerState newState){
     currentState = newState;
 }
 
+
+void store_event(const char* event) {
+    DateTime now = rtc.now();
+    char logLine[100];
+
+    // Format: [MM-DD-YYYY HH:MM:SS] 
+    sprintf(logLine, "[%02d-%02d-%04d %02d:%02d:%02d] %s",
+            now.month(), now.day(), now.year(),
+            now.hour(), now.minute(), now.second(),
+            event);
+
+    UART_print(logLine);
+}
 uint16_t get_water_level(){
     ADMUX = (ADMUX & 0xF0) | WATER_SENSOR;
     ADCSRA |= (1 << ADSC);
     while((1 << ADSC) & ADCSRA);
     return ADC;
-}
-void water_check_level(){
-    uint16_t waterLevel = get_water_level();
-    if (waterLevel < WATER_LEVEL_THRESHOLD) {
-    if (currentState != DISABLED && currentState != ERROR) {
-      state_trans(ERROR);
-    }
-  } else if (currentState == ERROR) {
-    // Water level is now good, but need reset button to return to IDLE
-  }
-}
-
-
-// ISR FOR BUTTONS START/STOP & REST
-void start_stop_button(){
-    if (currentState == DISABLED){
-        state_trans(IDLE);
-        store_event("Start System");
-    }
-    if (currentState != DISABLED){
-        state_trans(DISABLED);
-        store_event("Stopped System");
-    }
-}
-
-void reset_button(){
-    if(currentState == ERROR){
-        uint16_t waterLevel = get_water_level();
-        if (waterLevel > WATER_LEVEL_THRESHOLD){
-            state_trans(IDLE);
-            store_event("System Reset");
-        }
-    }
-}
-
-void update_LCD(){
-    //implement delay for updates every minute
-  lcd.clear();
-  lcd.setCursor(0,0);
-  lcd.print(" Temp(°C): ");
-  lcd.print(dht.readTemperature());
-  lcd.print("   Humidity(%): ");
-  lcd.print(dht.readHumidity());
-
-  lcd.setCursor(0,1);
-  lcd.print("State: ");
-  switch(currentState){
-    case DISABLED: 
-      lcd.print("DISABLED");
-      break;
-    case IDLE: 
-      lcd.print("IDLE");
-      break;
-    case RUNNING:
-      lcd.print("RUNNING");
-      break;
-    case ERROR: 
-      lcd.print("ERROR");
-      break;
-  }
-}
-
-void store_event(const char* event){
-  UART_print(event);
 }
