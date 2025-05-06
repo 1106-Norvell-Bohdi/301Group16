@@ -7,6 +7,8 @@
 // Pin Definitions
 #define WATER_LEVEL_THRESHOLD 200
 #define WATER_SENSOR A0 //PF0
+#define TEMP_HIGH_THRESHOLD 30 
+#define TEMP_LOW_THRESHOLD 24
 #define START_STOP_BUTTON 1 // I think start/stop button should be same button 
 #define RESET 2
 
@@ -23,7 +25,7 @@ const int rs = 7, en = 8, d4 = 9, d5 = 10, d6 = 11, d7 = 12;
 #define MOTOR_2 15
 #define MOTOR_3 16
 #define MOTOR_4 17
-#define FAN  
+#define FAN_PIN 30
 
 // UART 
 #define RDA 0x80
@@ -100,6 +102,10 @@ void water_level_check();
 void state_trans(CoolerState newState);
 void store_event(const char* event); 
 uint16_t get_water_level();
+void control_fan();
+void control_stepper();
+void check_system_timers();
+
 
 // State Definitions
 enum CoolerState { DISABLED, IDLE, ERROR, RUNNING };
@@ -135,20 +141,26 @@ const unsigned long updateInterval = 60000; // 1 minute in milliseconds
 
 void loop() {
   currentMillis = millis();
-    unsigned int waterValue = adc_read(WATER_SENSOR);
-  // Check if it's time to update display (once per minute)
-  if (currentMillis - lastUpdateTime >= updateInterval) {
-    if (currentState != DISABLED) {
-      update_LCD();
-    }
+
+  // Update LCD every minute if system is active
+  if (currentState != DISABLED && currentMillis - lastUpdateTime >= updateInterval) {
+    update_LCD();
     lastUpdateTime = currentMillis;
   }
-  
-  // Regular checks that don't need to wait for interval
-  water_level_check();
-  
-  if (currentState != DISABLED && currentState != ERROR) {
-    check_temperature();
+
+  // Continuously monitor water level
+  if (currentState != DISABLED) {
+    water_level_check();
+  }
+
+  // Fan control based on temperature (IDLE/RUNNING only)
+  if (currentState == IDLE || currentState == RUNNING) {
+    control_fan();
+  }
+
+  // Allow vent position control in all states except DISABLED
+  if (currentState != DISABLED) {
+    control_stepper();
   }
 }
 
@@ -238,7 +250,7 @@ void state_trans(CoolerState newState){
             // PORTE |= ~(1 << PE5);
             // PORTH &= ~(1 << PH6);
             PORTE |= (1 << PG5);
-            store_event("System DISABLED")
+            store_event("System DISABLED");
             break;
         
         case IDLE:
@@ -285,3 +297,37 @@ uint16_t get_water_level(){
     while((1 << ADSC) & ADCSRA);
     return ADC;
 }
+
+void control_fan() {
+    float temp = dht.readTemperature();
+
+    if (dht.readTemperature()) return;
+
+    if (temp >= TEMP_HIGH_THRESHOLD && currentState == IDLE) {
+        digitalWrite(FAN_PIN, HIGH);
+        state_trans(RUNNING);
+    } else if (temp <= TEMP_LOW_THRESHOLD && currentState == RUNNING) {
+        digitalWrite(FAN_PIN, LOW);
+        state_trans(IDLE);
+    }
+}
+
+void control_stepper() {
+    int val = analogRead(A2); // idk if this analog pin is correct for the vent control
+    int steps = map(val, 0, 1023, -100, 100);
+    stepperMotor.step(steps);
+
+    // Log movement event
+    store_event("Stepper position changed");
+}
+
+void check_system_timers() {
+    if (millis() - lastUpdateTime >= 60000) {
+        update_LCD();
+        water_level_check();
+        control_fan();
+        lastUpdateTime = millis();
+    }
+}
+
+
