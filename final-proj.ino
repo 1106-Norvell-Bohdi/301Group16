@@ -237,13 +237,13 @@ void state_trans(CoolerState newState){
         case DISABLED:
             // PORTE |= ~(1 << PE5);
             // PORTH &= ~(1 << PH6);
-            PORTG |= (1 << PG5);
+            PORTE |= (1 << PG5);
             store_event("System DISABLED")
             break;
         
         case IDLE:
             // PORTH |= ~(1 << PH5);
-            PORTE |= (1 << PE3);
+            PORTG |= (1 << PE3);
             store_event("System IDLE");
             break;
       
