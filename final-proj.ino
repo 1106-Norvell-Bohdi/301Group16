@@ -315,10 +315,10 @@ void control_fan() {
     if (dht.readTemperature()) return;
 
     if (temp >= TEMP_HIGH_THRESHOLD && currentState == IDLE) {
-         PORTE |= (1 << PE7);
+         PORTE |= (1 << PC7);
         state_trans(RUNNING);
     } else if (temp <= TEMP_LOW_THRESHOLD && currentState == RUNNING) {
-        PORTE &= ~(1 << PE7);
+        PORTE &= ~(1 << PC7);
         state_trans(IDLE);
     }
 }
