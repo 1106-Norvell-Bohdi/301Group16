@@ -324,7 +324,7 @@ void control_fan() {
 }
 
 void control_stepper() {
-    int val = analogRead(A2); // idk if this analog pin is correct for the vent control
+    int val = analogRead(A2); // idk if this analog pin is correct for the vent control (CANNOT use analogRead)
     int steps = map(val, 0, 1023, -100, 100);
     stepperMotor.step(steps);
 
