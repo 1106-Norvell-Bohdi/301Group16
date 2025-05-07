@@ -1,4 +1,4 @@
-
+Group Members: Keegan Evans, Bohdi Norvell, Connor James, Aiden Coss
 # Swamp Cooler Project - Function Breakdown
 ## Core System Functions
 
