@@ -65,13 +65,13 @@ void check_system_timers();
 
 //Pin for Button Interupt And set up 
 #define PinInterupt 21
+#define PinRestart 22
 //prot d
 volatile unsigned char* my_DDRD = (unsigned char*)0x0A;
 volatile unsigned char* my_PinD = (unsigned char*)0x09;
-volatile bool idle;
-void startStop(){
-    idle = ~idle;
-}
+
+const int stepsPerCycle = 100;
+Stepper Mystepper(stepsPerCycle, 14, 15, 16 ,17);
 
 volatile unsigned char* myUCSR0A = (unsigned char*)0x00C0;
 volatile unsigned char* myUCSR0B = (unsigned char*)0x00C1;
@@ -144,8 +144,13 @@ void setup(){
    //sets pin 21 (port d 0) to input
     *my_DDRD &= 0xFE; 
     *my_PinD &= 0xFE;
+    *my_DDRD &= 0xFD;
+    *my_PinD &= 0xFD;
     //set up intrrupt function
     attatchInterrupt(digitalPinToInterrupt(PinInterupt), start_stop_button, CHANGE));
+    attachInterrupt(digitalPinToInterrupt(PinRestart), reset_button, CHANGE)
+
+    Mystepper.setSpeed(60);
 
     U0init(9600);
     rtc.begin();
@@ -330,10 +335,14 @@ void control_fan() {
 }
 
 void control_stepper() {
-    int val = analogRead(A2); // idk if this analog pin is correct for the vent control (CANNOT use analogRead)
-    int steps = map(val, 0, 1023, -100, 100);
-    stepperMotor.step(steps);
-
+    if(currentState == RUNNING){
+        Mystepper.step(stepsPerCycle);
+    }
+    else if(currentState == DISABLED || currentState == IDLE){
+        Mystepper.step(-stepsPerCycle);
+    }
+    else{
+    }
     // Log movement event
     store_event("Stepper position changed");
 }
