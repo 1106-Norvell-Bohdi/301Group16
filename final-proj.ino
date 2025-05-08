@@ -37,7 +37,7 @@ const int rs = 7, en = 8, d4 = 9, d5 = 10, d6 = 11, d7 = 12;
 volatile unsigned char* DDRD = (unsigned char*)0x0A;
 volatile unsigned char* PinD = (unsigned char*)0x09;
 //reset
-
+#define PinReset 22
 
 
 volatile unsigned char* myUCSR0A = (unsigned char*)0x00C0;
@@ -134,9 +134,10 @@ void setup(){
     DDRE |= (1 << DDE3);
     DDRG |= (1 << DDG5);
     DDRH |= (1 << DDH5);
-   //sets pin 21 (port d 0) to input
+   //sets pin 21 & 22 (port d 0) to input
     DDRD &= 0xFE; 
     PinD &= 0xFE;
+    
     //set up intrrupt function
     attatchInterrupt(digitalPinToInterrupt(PinInterupt), start_stop_button, CHANGE));
 
