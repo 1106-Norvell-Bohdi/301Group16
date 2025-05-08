@@ -33,13 +33,10 @@ const int rs = 7, en = 8, d4 = 9, d5 = 10, d6 = 11, d7 = 12;
 
 //Pin for Button Interupt And set up 
 #define PinInterupt 21
-//prot d 
+//start /stop  
 volatile unsigned char* DDRD = (unsigned char*)0x0A;
 volatile unsigned char* PinD = (unsigned char*)0x09;
-volatile bool idle;
-void startStop(){
-    idle = ~idle;
-}
+//reset
 
 
 
@@ -141,7 +138,7 @@ void setup(){
     DDRD &= 0xFE; 
     PinD &= 0xFE;
     //set up intrrupt function
-    attatchInterrupt(digitalPinToInterrupt(PinInterupt), startStop, CHANGE));
+    attatchInterrupt(digitalPinToInterrupt(PinInterupt), start_stop_button, CHANGE));
 
     U0init(9600);
     rtc.begin();
