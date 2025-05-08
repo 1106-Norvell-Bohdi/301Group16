@@ -1,31 +1,63 @@
+// CPE 301 - Group 16 Final Swamp Cooler
+// Keegan Evans, Bohdi Norvell, Aiden Coss, Connor James
+// All partners contributed to the completion of the code.
+
+
 #include <LiquidCrystal.h>
 #include <DHT.h>
 #include <Wire.h>
 #include <RTClib.h>
 #include <Stepper.h>
 
+
 // Pin Definitions
 #define WATER_LEVEL_THRESHOLD 200
-#define WATER_SENSOR A0 //PF0
 #define TEMP_HIGH_THRESHOLD 30 
 #define TEMP_LOW_THRESHOLD 24
-#define START_STOP_BUTTON 1 // I think start/stop button should be same button 
-#define RESET 2
 
-#define YELLOW 3 // DISABLE
-#define GREEN 4 // IDLE
-#define RED 5  // ERROR
-#define BLUE 6 // RUNNNG
+#define WATER_SENSOR A0 //PF0
+#define START_STOP_BUTTON 1 // PE1
+#define RESET 2    //PE4
+
+#define YELLOW 3 // PE5 - DISABLE
+#define GREEN 4 // PG5 - IDLE
+#define RED 5  // PE3 - ERROR
+#define BLUE 6 // PH3 - RUNNNG
+
+#define DHT_PIN 13    // PB7 
+#define DHT_TYPE 11    //DHT type 11
+#define MOTOR_1 14    // PJ1
+#define MOTOR_2 15    // PJ0
+#define MOTOR_3 16    // Ph1
+#define MOTOR_4 17    // PH0
+#define FAN_PIN 30     // PC7
+
+// State Definitions
+enum CoolerState { DISABLED, IDLE, ERROR, RUNNING };
+CoolerState currentState = DISABLED;
 
 // pins for LCD
 const int rs = 7, en = 8, d4 = 9, d5 = 10, d6 = 11, d7 = 12;
+// Global Objects
+LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
+RTC_DS1307 rtc;
+//Stepper stepperMotor(STEPS_PER_REV, MOTOR_1, MOTOR_2, MOTOR_3, MOTOR_4);
+DHT dht(DHT_PIN, DHT_TYPE);
 
-#define DHT11_PIN 13
-#define MOTOR_1 14
-#define MOTOR_2 15
-#define MOTOR_3 16
-#define MOTOR_4 17
-#define FAN_PIN 30
+bool systemEnabled = false;
+unsigned long lastUpdateTime = 0;
+
+// Function Prototypes
+void start_stop_button();
+void reset_button();
+void update_LCD(); 
+void water_level_check(); 
+void state_trans(CoolerState newState);
+void store_event(const char* event); 
+uint16_t get_water_level();
+void control_fan();
+void control_stepper();
+void check_system_timers();
 
 // UART 
 #define RDA 0x80
@@ -33,12 +65,13 @@ const int rs = 7, en = 8, d4 = 9, d5 = 10, d6 = 11, d7 = 12;
 
 //Pin for Button Interupt And set up 
 #define PinInterupt 21
-//start /stop  
-volatile unsigned char* DDRD = (unsigned char*)0x0A;
-volatile unsigned char* PinD = (unsigned char*)0x09;
-//reset
-#define PinReset 22
-
+//prot d
+volatile unsigned char* my_DDRD = (unsigned char*)0x0A;
+volatile unsigned char* my_PinD = (unsigned char*)0x09;
+volatile bool idle;
+void startStop(){
+    idle = ~idle;
+}
 
 volatile unsigned char* myUCSR0A = (unsigned char*)0x00C0;
 volatile unsigned char* myUCSR0B = (unsigned char*)0x00C1;
@@ -103,41 +136,14 @@ unsigned int adc_read(unsigned char adc_channel_num){
     return *my_ADC_DATA;
 }
 
-// Function Prototypes
-void start_stop_button();
-void reset_button();
-void update_LCD(); 
-void water_level_check(); 
-void state_trans(CoolerState newState);
-void store_event(const char* event); 
-uint16_t get_water_level();
-void control_fan();
-void control_stepper();
-void check_system_timers();
-
-
-// State Definitions
-enum CoolerState { DISABLED, IDLE, ERROR, RUNNING };
-CoolerState currentState = DISABLED;
-
-// Global Objects
-LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
-RTC_DS1307 rtc;
-Stepper stepperMotor(STEPS_PER_REV, MOTOR_1, MOTOR_2, MOTOR_3, MOTOR_4);
-DHT dht(DHT_PIN, DHT_TYPE);
-
-bool systemEnabled = false;
-unsigned long lastUpdateTime = 0;
-
 void setup(){
     DDRE |= (1 << DDE5);
     DDRE |= (1 << DDE3);
     DDRG |= (1 << DDG5);
     DDRH |= (1 << DDH5);
-   //sets pin 21 & 22 (port d 0) to input
-    DDRD &= 0xFE; 
-    PinD &= 0xFE;
-    
+   //sets pin 21 (port d 0) to input
+    *my_DDRD &= 0xFE; 
+    *my_PinD &= 0xFE;
     //set up intrrupt function
     attatchInterrupt(digitalPinToInterrupt(PinInterupt), start_stop_button, CHANGE));
 
@@ -145,10 +151,6 @@ void setup(){
     rtc.begin();
     lcd.begin(16,2);
     dht.begin();
-}
-
-void loop(){
-
 }
 
 unsigned long currentMillis;
@@ -212,7 +214,7 @@ void update_LCD() {
 
     // Line 1: Temp and Humidity
     lcd.setCursor(0, 0);
-    if (dht.readtemp() || dht.readhumidity()) {
+    if (dht.readTemperature() || dht.readHumidity()) {
         lcd.print("Sensor error");
     } else {
         lcd.print("T:");
@@ -264,20 +266,20 @@ void state_trans(CoolerState newState){
         case DISABLED:
             // PORTE |= ~(1 << PE5);
             // PORTH &= ~(1 << PH6);
-            PORTE |= (1 << PG5);
+            PORTE |= (1 << PE5);
             store_event("System DISABLED");
             break;
         
         case IDLE:
             // PORTH |= ~(1 << PH5);
-            PORTG |= (1 << PE3);
+            PORTG |= (1 << PG5);
             store_event("System IDLE");
             break;
       
         case ERROR:
             // PORTH |= (1<< PH4);
             // PORTH &= ~(1<< PH6);
-            PORTE |= (1 << PE5);
+            PORTE |= (1 << PE3);
             lcd.clear();
             lcd.print("System Error: Low Water");
             store_event("System ERROR");
@@ -319,16 +321,16 @@ void control_fan() {
     if (dht.readTemperature()) return;
 
     if (temp >= TEMP_HIGH_THRESHOLD && currentState == IDLE) {
-        digitalWrite(FAN_PIN, HIGH);
+         PORTE |= (1 << PC7);
         state_trans(RUNNING);
     } else if (temp <= TEMP_LOW_THRESHOLD && currentState == RUNNING) {
-        digitalWrite(FAN_PIN, LOW);
+        PORTE &= ~(1 << PC7);
         state_trans(IDLE);
     }
 }
 
 void control_stepper() {
-    int val = analogRead(A2); // idk if this analog pin is correct for the vent control
+    int val = analogRead(A2); // idk if this analog pin is correct for the vent control (CANNOT use analogRead)
     int steps = map(val, 0, 1023, -100, 100);
     stepperMotor.step(steps);
 
@@ -344,5 +346,4 @@ void check_system_timers() {
         lastUpdateTime = millis();
     }
 }
-
 
