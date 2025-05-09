@@ -96,7 +96,7 @@ void U0putchar(unsigned char U0data){
 void UART_print(const char* msg){
   DateTime now = rtc.now();
     char time[20];
-    sprintf(time, "%02d-%02d-%04d %02d:%02s:%02s ", now.month(), now.day(), now.year(), now.hour(), now.minute(), now.second());
+    sprintf(time, "%02d-%02d-%04d %02d:%02d:%02d ", now.month(), now.day(), now.year(), now.hour(), now.minute(), now.second());
 
 const char* ptr = time;
 while(*ptr != '\0'){
@@ -146,6 +146,10 @@ void setup(){
     *my_PinD &= 0xFE;
     *my_DDRD &= 0xFD;
     *my_PinD &= 0xFD;
+
+    pinMode(PinInterupt, INPUT_PULLUP);
+    pinMode(PinRestart, INPUT_PULLUP);
+    
     //set up intrrupt function
     attachInterrupt(digitalPinToInterrupt(PinInterupt), start_stop_button, CHANGE);
     attachInterrupt(digitalPinToInterrupt(PinRestart), reset_button, CHANGE);
