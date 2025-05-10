@@ -7,9 +7,16 @@
 #include <RTClib.h>
 #include <Stepper.h>
 
+#define DHT11_Pin 7 
+#define STEPS 32
+const int rs = 12, en = 11, d4 = 5, d5 = 4, d6 = 3, d7 = 2, watterPin = 0;
+LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
+Stepper stepper(STEPS, 22, 24, 23, 25);
+DHT dht(DHT11_Pin, DHT11);
+RTC_DS1307 rtc;
 
 // Pin Definitions
-#define WATER_LEVEL_THRESHOLD 200
+/*#define WATER_LEVEL_THRESHOLD 200
 #define TEMP_HIGH_THRESHOLD 30 
 #define TEMP_LOW_THRESHOLD 24
 
@@ -28,7 +35,7 @@
 #define MOTOR_2 15    // PJ0
 #define MOTOR_3 16    // Ph1
 #define MOTOR_4 17    // PH0
-#define FAN_PIN 30     // PC7
+#define FAN_PIN 30     // PC7*/
 
 // State Definitions
 enum CoolerState { DISABLED, IDLE, ERROR, RUNNING };
