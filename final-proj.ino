@@ -94,7 +94,7 @@ void U0putchar(unsigned char U0data){
 void UART_print(const char* msg){
   DateTime now = rtc.now();
     char time[20];
-    sprintf(time, "%02d-%02d-%04d %02d:%02s:%02s ", now.month(), now.day(), now.year(), now.hour(), now.minute(), now.second());
+    sprintf(time, "%02d-%02d-%04d %02d:%02d:%02d ", now.month(), now.day(), now.year(), now.hour(), now.minute(), now.second());
 
 const char* ptr = time;
 while(*ptr != '\0'){
@@ -144,9 +144,13 @@ void setup(){
     *my_PinD &= 0xFE;
     *my_DDRD &= 0xFD;
     *my_PinD &= 0xFD;
+
+    pinMode(PinInterupt, INPUT_PULLUP);
+    pinMode(PinRestart, INPUT_PULLUP);
+    
     //set up intrrupt function
-    attatchInterrupt(digitalPinToInterrupt(PinInterupt), start_stop_button, CHANGE));
-    attachInterrupt(digitalPinToInterrupt(PinRestart), reset_button, CHANGE)
+    attachInterrupt(digitalPinToInterrupt(PinInterupt), start_stop_button, CHANGE);
+    attachInterrupt(digitalPinToInterrupt(PinRestart), reset_button, CHANGE);
 
     Mystepper.setSpeed(60);
 
@@ -190,7 +194,7 @@ void start_stop_button(){
         state_trans(IDLE);
         store_event("Start System");
     }
-    if (currentState != DISABLED){
+    else{
         state_trans(DISABLED);
         store_event("Stopped System");
     }
@@ -217,7 +221,7 @@ void update_LCD() {
 
     // Line 1: Temp and Humidity
     lcd.setCursor(0, 0);
-    if (dht.readTemperature() || dht.readHumidity()) {
+    if (isnan(temp) || isnan(humidity)) {
         lcd.print("Sensor error");
     } else {
         lcd.print("T:");
@@ -248,7 +252,7 @@ void update_LCD() {
     lcd.print(now.minute());
 }
 
-void water_check_level(){
+void water_level_check(){
     uint16_t waterLevel = get_water_level();
     if (waterLevel < WATER_LEVEL_THRESHOLD) {
     if (currentState != DISABLED && currentState != ERROR) {
@@ -321,13 +325,13 @@ uint16_t get_water_level(){
 void control_fan() {
     float temp = dht.readTemperature();
 
-    if (dht.readTemperature()) return;
+    if (isnan(temp)) return;
 
     if (temp >= TEMP_HIGH_THRESHOLD && currentState == IDLE) {
-         PORTE |= (1 << PC7);
+         PORTC |= (1 << PC7);
         state_trans(RUNNING);
     } else if (temp <= TEMP_LOW_THRESHOLD && currentState == RUNNING) {
-        PORTE &= ~(1 << PC7);
+        PORTC &= ~(1 << PC7);
         state_trans(IDLE);
     }
 }
@@ -353,4 +357,3 @@ void check_system_timers() {
         lastUpdateTime = millis();
     }
 }
-
